@@ -221,7 +221,7 @@ export class UsersService {
           id: true,
           name: true,
           email: true,
-          avatar: true,
+          avatarFileId: true,
           role: true,
           createdAt: true,
           passwordHash: true,

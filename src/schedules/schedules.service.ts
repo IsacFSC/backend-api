@@ -99,14 +99,13 @@ export class SchedulesService {
         });
       }
 
-      // Cria a mensagem com o anexo na conversa
+      // Cria a mensagem com o anexo na conversa (referenciando o File criado no DB)
       await this.prisma.message.create({
         data: {
           content: `Arquivo da escala: ${file.originalname}`,
           authorId: uploader.id,
           conversationId: conversation.id,
-          file: fileName,
-          fileMimeType: file.mimetype,
+          fileId: createdFile.id,
         }
       });
     }
@@ -125,10 +124,6 @@ export class SchedulesService {
     const schedule = await this.prisma.schedule.findUnique({
       where: { id: scheduleId },
     });
-
-    if (!schedule || !schedule.file) {
-      throw new HttpException('Arquivo não encontrado para esta escala!', HttpStatus.NOT_FOUND);
-    }
 
     if (!schedule || !schedule.fileId) {
       throw new HttpException('Arquivo não encontrado para esta escala!', HttpStatus.NOT_FOUND);
