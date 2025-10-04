@@ -1,162 +1,86 @@
--- CreateEnum
-CREATE TYPE "Skill" AS ENUM ('VOCAL_LEAD', 'BACKING_VOCAL', 'VIOLAO', 'SAX', 'GUITARRA', 'TECLADO', 'CONTRA_BAIXO', 'BATERIA', 'OUTROS');
+-- Migration: add File model and reference columns (SAFE DELTA)
 
--- CreateEnum
-CREATE TYPE "Role" AS ENUM ('ADMIN', 'LEADER', 'USER');
-
--- CreateEnum
-CREATE TYPE "TaskStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
-
--- CreateTable
-CREATE TABLE "Conversation" (
-    "id" SERIAL NOT NULL,
-    "subject" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "Conversation_pkey" PRIMARY KEY ("id")
+-- CreateTable: File (if not exists already)
+CREATE TABLE IF NOT EXISTS "File" (
+  "id" SERIAL NOT NULL,
+  "fileName" TEXT NOT NULL,
+  "mimeType" TEXT NOT NULL,
+  "data" BYTEA NOT NULL,
+  "size" INTEGER NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "File_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Message" (
-    "id" SERIAL NOT NULL,
-    "content" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "authorId" INTEGER NOT NULL,
-    "conversationId" INTEGER NOT NULL,
-    "fileId" INTEGER,
+-- Add columns (if not exists)
+ALTER TABLE "Message" ADD COLUMN IF NOT EXISTS "fileId" INTEGER;
+ALTER TABLE "Schedule" ADD COLUMN IF NOT EXISTS "fileId" INTEGER;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarFileId" INTEGER;
 
-    CONSTRAINT "Message_pkey" PRIMARY KEY ("id")
-);
+-- Note: Foreign key constraints intentionally omitted to avoid conflicts with existing schema.
+-- Migration: add File model and reference columns (SAFE DELTA)
 
--- CreateTable
-CREATE TABLE "MessageRead" (
-    "id" SERIAL NOT NULL,
-    "messageId" INTEGER NOT NULL,
-    "userId" INTEGER NOT NULL,
-    "readAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "MessageRead_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Task" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "completed" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "userId" INTEGER,
-    "status" "TaskStatus" NOT NULL DEFAULT 'PENDING',
-    "scheduleId" INTEGER,
-
-    CONSTRAINT "Task_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Schedule" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "description" TEXT,
-    "startTime" TIMESTAMP(3) NOT NULL,
-    "endTime" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "fileId" INTEGER,
-
-    CONSTRAINT "Schedule_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "UsersOnSchedules" (
-    "userId" INTEGER NOT NULL,
-    "scheduleId" INTEGER NOT NULL,
-    "assignedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "skill" "Skill" NOT NULL DEFAULT 'OUTROS',
-
-    CONSTRAINT "UsersOnSchedules_pkey" PRIMARY KEY ("userId","scheduleId")
-);
-
--- CreateTable
-CREATE TABLE "User" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "passwordHash" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "active" BOOLEAN NOT NULL DEFAULT true,
-    "avatarFileId" INTEGER,
-    "createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
-    "role" "Role" NOT NULL DEFAULT 'USER',
-
-    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "File" (
+-- CreateTable: File (if not exists already)
+CREATE TABLE IF NOT EXISTS "File" (
     "id" SERIAL NOT NULL,
     "fileName" TEXT NOT NULL,
     "mimeType" TEXT NOT NULL,
     "data" BYTEA NOT NULL,
     "size" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "File_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "_ConversationParticipants" (
-    "A" INTEGER NOT NULL,
-    "B" INTEGER NOT NULL
+-- Add columns (if not exists)
+ALTER TABLE "Message" ADD COLUMN IF NOT EXISTS "fileId" INTEGER;
+ALTER TABLE "Schedule" ADD COLUMN IF NOT EXISTS "fileId" INTEGER;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarFileId" INTEGER;
+
+-- Note: Foreign key constraints intentionally omitted to avoid conflicts with existing schema.
+
+
+-- Migration: add File model and reference columns
+
+-- CreateTable: File
+CREATE TABLE IF NOT EXISTS "File" (
+    "id" SERIAL NOT NULL,
+    "fileName" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "data" BYTEA NOT NULL,
+    "size" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "File_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "MessageRead_messageId_userId_key" ON "MessageRead"("messageId", "userId");
+-- Add columns if they don't already exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Message' AND column_name='fileId') THEN
+        ALTER TABLE "Message" ADD COLUMN "fileId" INTEGER;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Schedule' AND column_name='fileId') THEN
+        ALTER TABLE "Schedule" ADD COLUMN "fileId" INTEGER;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='User' AND column_name='avatarFileId') THEN
+        ALTER TABLE "User" ADD COLUMN "avatarFileId" INTEGER;
+    END IF;
+-- Migration: add File model and reference columns (SAFE DELTA)
 
--- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+-- CreateTable: File (if not exists already)
+CREATE TABLE IF NOT EXISTS "File" (
+    "id" SERIAL NOT NULL,
+    "fileName" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "data" BYTEA NOT NULL,
+    "size" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "File_pkey" PRIMARY KEY ("id")
+);
 
--- CreateIndex
-CREATE UNIQUE INDEX "_ConversationParticipants_AB_unique" ON "_ConversationParticipants"("A", "B");
+-- Add columns (if not exists)
+ALTER TABLE "Message" ADD COLUMN IF NOT EXISTS "fileId" INTEGER;
+ALTER TABLE "Schedule" ADD COLUMN IF NOT EXISTS "fileId" INTEGER;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarFileId" INTEGER;
 
--- CreateIndex
-CREATE INDEX "_ConversationParticipants_B_index" ON "_ConversationParticipants"("B");
-
--- AddForeignKey
-ALTER TABLE "Message" ADD CONSTRAINT "Message_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Message" ADD CONSTRAINT "Message_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "Conversation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Message" ADD CONSTRAINT "Message_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES "File"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MessageRead" ADD CONSTRAINT "MessageRead_messageId_fkey" FOREIGN KEY ("messageId") REFERENCES "Message"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MessageRead" ADD CONSTRAINT "MessageRead_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Task" ADD CONSTRAINT "Task_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Task" ADD CONSTRAINT "Task_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Schedule" ADD CONSTRAINT "Schedule_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES "File"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "UsersOnSchedules" ADD CONSTRAINT "UsersOnSchedules_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "UsersOnSchedules" ADD CONSTRAINT "UsersOnSchedules_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "User" ADD CONSTRAINT "User_avatarFileId_fkey" FOREIGN KEY ("avatarFileId") REFERENCES "File"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_ConversationParticipants" ADD CONSTRAINT "_ConversationParticipants_A_fkey" FOREIGN KEY ("A") REFERENCES "Conversation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_ConversationParticipants" ADD CONSTRAINT "_ConversationParticipants_B_fkey" FOREIGN KEY ("B") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- Note: Foreign key constraints intentionally omitted to avoid conflicts with existing schema.
+    "messageId" INTEGER NOT NULL,
 
