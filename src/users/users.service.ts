@@ -32,7 +32,7 @@ export class UsersService {
         id: true,
         name: true,
         email: true,
-        avatar: true,
+        avatarFileId: true,
         Tasks: true,
         role: true,
       },
@@ -197,16 +197,25 @@ export class UsersService {
       console.log(mimeType);
       console.log(fileExtension);
       const fileName = `${user.id}.${fileExtension}`;
-      const fileLocale = path.resolve(process.cwd(), 'files', fileName);
-      const avatarPath = `/files/${fileName}`;
-      await fs.writeFile(fileLocale, file.buffer);
+
+      // Save file content to DB using File model
+      const createdFile = await this.prisma.file.create({
+        data: {
+          fileName,
+          mimeType: mimeType,
+          data: file.buffer,
+          size: file.size,
+        },
+      });
+
+      const avatarPath = `/files/${createdFile.id}`; // keep a path-like value for compatibility if needed
 
       const updatedUser = await this.prisma.user.update({
         where: {
           id: user.id,
         },
         data: {
-          avatar: avatarPath,
+          avatarFileId: createdFile.id,
         },
         select: {
           id: true,
@@ -238,20 +247,15 @@ export class UsersService {
         where: { id: user.id },
       });
 
-      if (!userRecord || !userRecord.avatar) {
+      if (!userRecord || !userRecord.avatarFileId) {
         throw new HttpException('Usuário não possui avatar!', HttpStatus.BAD_REQUEST);
       }
 
-      const fileName = path.basename(userRecord.avatar);
-      const fileLocale = path.resolve(process.cwd(), 'files', fileName);
-
-      // Check if file exists before attempting to delete
+      // Delete the file record from DB (ignore if not found)
       try {
-        await fs.access(fileLocale);
-        await fs.unlink(fileLocale);
-      } catch (error) {
-        console.warn(`Could not delete file ${fileLocale}: ${error.message}`);
-        // Continue even if file doesn't exist on disk, just clear DB entry
+        await this.prisma.file.delete({ where: { id: userRecord.avatarFileId } });
+      } catch (e) {
+        // ignore
       }
 
       const updatedUser = await this.prisma.user.update({
@@ -259,13 +263,13 @@ export class UsersService {
           id: user.id,
         },
         data: {
-          avatar: null,
+          avatarFileId: null,
         },
         select: {
           id: true,
           name: true,
           email: true,
-          avatar: true,
+          avatarFileId: true,
           role: true,
           createdAt: true,
           passwordHash: true,

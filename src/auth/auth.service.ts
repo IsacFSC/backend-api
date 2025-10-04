@@ -26,7 +26,7 @@ export class AuthService {
         sub: user.id,
         email: user.email,
         name: user.name,
-        avatar: user.avatar,
+        avatarFileId: (user as any).avatarFileId || null,
         role: user.role,
       },
       {
@@ -71,7 +71,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        avatar: user.avatar,
+        avatarFileId: (user as any).avatarFileId || null,
         role: user.role,
       },
     };

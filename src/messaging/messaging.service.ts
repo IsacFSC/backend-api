@@ -185,24 +185,22 @@ export class MessagingService {
     }
 
     const fileName = `${Date.now()}-${file.originalname}`;
-    const filePath = join(process.cwd(), 'backend-api', 'files', fileName);
 
-    try {
-      writeFileSync(filePath, file.buffer);
-    } catch (error) {
-      throw new HttpException(
-        'Falha ao salvar o arquivo!',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const createdFile = await this.prisma.file.create({
+      data: {
+        fileName,
+        mimeType: file.mimetype,
+        data: file.buffer,
+        size: file.size,
+      },
+    });
 
     const newMessage = await this.prisma.message.create({
       data: {
         content: file.originalname, // Or some other content
         authorId: user.id,
         conversationId: conversationId,
-        file: fileName,
-        fileMimeType: file.mimetype,
+        fileId: createdFile.id,
       },
     });
 
@@ -210,22 +208,19 @@ export class MessagingService {
   }
 
   async downloadFile(fileName: string, res: Response) {
-    const message = await this.prisma.message.findFirst({
-      where: { file: fileName },
-    });
+    // fileName parameter now treated as fileId (stringified int) to find file
+    const fileId = Number(fileName);
+    if (Number.isNaN(fileId)) {
+      throw new HttpException('ID do arquivo inválido!', HttpStatus.BAD_REQUEST);
+    }
 
-    if (!message) {
+    const fileRecord = await this.prisma.file.findUnique({ where: { id: fileId } });
+    if (!fileRecord) {
       throw new HttpException('Arquivo não encontrado!', HttpStatus.NOT_FOUND);
     }
 
-    const filePath = join(process.cwd(), 'backend-api', 'files', fileName);
-
-    if (!existsSync(filePath)) {
-      throw new HttpException('Arquivo não encontrado no servidor!', HttpStatus.NOT_FOUND);
-    }
-
-    res.setHeader('Content-Type', message.fileMimeType || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${message.content}"`);
-    createReadStream(filePath).pipe(res);
+    res.setHeader('Content-Type', fileRecord.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileRecord.fileName}"`);
+    res.send(fileRecord.data);
   }
 }

@@ -4,7 +4,7 @@ import { Response } from 'express';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
-import { writeFileSync, createReadStream, existsSync, mkdirSync } from 'fs';
+import { createReadStream, existsSync, mkdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { Skill } from '@prisma/client';
 
@@ -48,27 +48,21 @@ export class SchedulesService {
     }
 
     const fileName = `${Date.now()}-${file.originalname}`;
-    const uploadPath = join(process.cwd(), 'backend-api', 'files');
-    const filePath = join(uploadPath, fileName);
 
-    try {
-      // Garante que o diretório de upload exista
-      if (!existsSync(uploadPath)) {
-        mkdirSync(uploadPath, { recursive: true });
-      }
-      writeFileSync(filePath, file.buffer);
-    } catch (error) {
-      throw new HttpException(
-        'Falha ao salvar o arquivo!',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    // Save file into DB
+    const createdFile = await this.prisma.file.create({
+      data: {
+        fileName,
+        mimeType: file.mimetype,
+        data: file.buffer,
+        size: file.size,
+      },
+    });
 
     const updatedSchedule = await this.prisma.schedule.update({
       where: { id: scheduleId },
-      data: { 
-        file: fileName,
-        fileMimeType: file.mimetype 
+      data: {
+        fileId: createdFile.id,
       },
     });
 
@@ -136,15 +130,18 @@ export class SchedulesService {
       throw new HttpException('Arquivo não encontrado para esta escala!', HttpStatus.NOT_FOUND);
     }
 
-    const filePath = resolve(process.cwd(), 'backend-api', 'files', schedule.file);
+    if (!schedule || !schedule.fileId) {
+      throw new HttpException('Arquivo não encontrado para esta escala!', HttpStatus.NOT_FOUND);
+    }
 
-    if (!existsSync(filePath)) {
+    const fileRecord = await this.prisma.file.findUnique({ where: { id: schedule.fileId } });
+    if (!fileRecord) {
       throw new HttpException('Arquivo não encontrado no servidor!', HttpStatus.NOT_FOUND);
     }
 
-    res.setHeader('Content-Disposition', `attachment; filename="${schedule.file}"`);
-    res.setHeader('Content-Type', schedule.fileMimeType || 'application/octet-stream');
-    createReadStream(filePath).pipe(res);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileRecord.fileName}"`);
+    res.setHeader('Content-Type', fileRecord.mimeType || 'application/octet-stream');
+    res.send(fileRecord.data);
   }
 
   async findSchedulesByUser(userId: number) {
